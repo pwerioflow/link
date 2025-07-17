@@ -1,5 +1,11 @@
 import { ImageResponse } from "next/og"
 
+// URLs de blob para as imagens
+const PWER_LINK_OG_IMAGE_URL =
+  "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Flux_Dev_A_stylized_digital_tree_with_glowing_branches_extendi_1.jpg-3FtGzDBnt7Pj2XdXWh3pBdYNTBHDDc.jpeg"
+const CALBOR_OG_IMAGE_URL =
+  "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Folder_Digital_Calbor.jpg-Zkp52r2Y5YZiuROpAwLwu6gABkzAqw.jpeg"
+
 // Tamanho padrão para Open Graph images
 export const size = {
   width: 1200,
@@ -9,48 +15,41 @@ export const size = {
 export const contentType = "image/jpeg" // Definir o tipo de conteúdo da imagem
 
 export default async function Image({ params }: { params: { username: string } }) {
-  let imageUrlPath: string // Caminho público da imagem
+  let imageUrl: string
   let altText: string
   let titleText: string
   let descriptionText: string
 
   if (params.username === "calbor") {
     // Para a URL da Calbor, use a imagem da casa
-    imageUrlPath = "/images/og-image-calbor.jpeg"
+    imageUrl = CALBOR_OG_IMAGE_URL
     altText = "Praia do Castelo - Calbor Engenharia"
     titleText = "Praia do Castelo"
     descriptionText = "Alto Padrão em meio a natureza."
   } else {
     // Para outras URLs, use a imagem genérica do Pwer Link
-    imageUrlPath = "/images/og-image.jpeg"
+    imageUrl = PWER_LINK_OG_IMAGE_URL
     altText = "Pwer Link - Árvore de Conexões Digitais"
     titleText = "Pwer Link"
     descriptionText = "Seu link único. Todas as conexões."
   }
 
-  // Construir a URL completa da imagem para fetch
-  // Em ambiente de build do Vercel, process.env.VERCEL_URL pode não estar disponível
-  // ou ser o URL de preview. Usaremos uma URL relativa que o Next.js resolve.
-  // Para garantir que funcione em qualquer ambiente, podemos usar uma URL absoluta se soubermos o domínio.
-  // No entanto, para o contexto de OG Image, o Next.js geralmente resolve caminhos /public/ corretamente.
-  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
-  const fullImageUrl = `${baseUrl}${imageUrlPath}`
-
   let imageData: ArrayBuffer | null = null
   try {
-    const response = await fetch(fullImageUrl)
+    const response = await fetch(imageUrl)
     if (!response.ok) {
-      console.error(`Failed to fetch image: ${fullImageUrl}, status: ${response.status}`)
+      console.error(`Failed to fetch image: ${imageUrl}, status: ${response.status}`)
       // Fallback para placeholder se a imagem não puder ser carregada
-      const fallbackResponse = await fetch(`${baseUrl}/placeholder.svg`)
+      // Usar um placeholder SVG genérico ou uma imagem de fallback conhecida
+      const fallbackResponse = await fetch("https://via.placeholder.com/1200x630.png?text=Image+Not+Found")
       imageData = await fallbackResponse.arrayBuffer()
     } else {
       imageData = await response.arrayBuffer()
     }
   } catch (error) {
-    console.error(`Error fetching image ${fullImageUrl}:`, error)
+    console.error(`Error fetching image ${imageUrl}:`, error)
     // Fallback para placeholder em caso de erro de rede
-    const fallbackResponse = await fetch(`${baseUrl}/placeholder.svg`)
+    const fallbackResponse = await fetch("https://via.placeholder.com/1200x630.png?text=Image+Load+Error")
     imageData = await fallbackResponse.arrayBuffer()
   }
 

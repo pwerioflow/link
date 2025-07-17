@@ -4,6 +4,7 @@ import Image from "next/image"
 import { notFound, redirect } from "next/navigation"
 import { incrementQrScanCount } from "@/lib/supabase/qr-tracking"
 import Link from "next/link"
+import type { Metadata } from "next" // Importar Metadata
 
 import ClientLinkButton from "./client-link-button"
 
@@ -13,6 +14,49 @@ const iconMap = {
   website: <Globe />,
   download: <Download />,
   whatsapp: <MessageCircle />,
+}
+
+// Função para gerar metadados dinamicamente
+export async function generateMetadata({ params }: { params: { username: string } }): Promise<Metadata> {
+  const supabase = await createClient()
+
+  const { data: profile } = await supabase.from("profiles").select("*").eq("username", params.username).single()
+
+  if (!profile) {
+    // Se o perfil não for encontrado, os metadados padrão do layout serão usados,
+    // e a página eventualmente chamará notFound().
+    return {
+      title: "Página não encontrada",
+      description: "A página que você está procurando não existe.",
+    }
+  }
+
+  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
+  const pageUrl = `${baseUrl}/${params.username}`
+
+  return {
+    title: profile.business_name || "Linktree",
+    description: profile.business_description || "Seu link único. Todas as conexões.",
+    openGraph: {
+      url: pageUrl,
+      type: "website",
+      title: profile.business_name || "Linktree",
+      description: profile.business_description || "Seu link único. Todas as conexões.",
+      // A imagem OG será gerada por opengraph-image.tsx automaticamente
+      // images: [{ url: `/images/og-image-${params.username}.jpeg` }] // Não é necessário aqui, opengraph-image.tsx cuida disso
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: profile.business_name || "Linktree",
+      description: profile.business_description || "Seu link único. Todas as conexões.",
+      // A imagem OG será gerada por opengraph-image.tsx automaticamente
+      // images: [`/images/og-image-${params.username}.jpeg`] // Não é necessário aqui
+    },
+    // Se você tiver um Facebook App ID, adicione-o aqui:
+    // facebook: {
+    //   appId: 'SEU_FACEBOOK_APP_ID',
+    // },
+  }
 }
 
 export default async function UserLinktreePage({

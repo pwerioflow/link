@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react" // Importar useRef
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,14 +31,14 @@ import {
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { Database } from "@/lib/types/database"
-import QRCode from "react-qr-code" // Importar a biblioteca de QR Code
+import QRCode from "react-qr-code"
 
-import { resetQrScanCount } from "@/app/actions/admin-actions" // Importar a Server Action
+import { resetQrScanCount } from "@/app/actions/admin-actions"
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 type Settings = Database["public"]["Tables"]["settings"]["Row"]
 type LinkItem = Database["public"]["Tables"]["links"]["Row"]
-type QrCodeMetrics = Database["public"]["Tables"]["qr_code_metrics"]["Row"] // Novo tipo
+type QrCodeMetrics = Database["public"]["Tables"]["qr_code_metrics"]["Row"]
 
 const iconMap = {
   instagram: <Instagram />,
@@ -53,7 +53,7 @@ export default function AdminPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [links, setLinks] = useState<LinkItem[]>([])
-  const [qrMetrics, setQrMetrics] = useState<QrCodeMetrics | null>(null) // Novo estado
+  const [qrMetrics, setQrMetrics] = useState<QrCodeMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
@@ -62,6 +62,7 @@ export default function AdminPage() {
 
   const supabase = createClient()
   const router = useRouter()
+  const qrCodeRef = useRef<HTMLDivElement>(null) // Ref para o container do QR Code
 
   useEffect(() => {
     getUser()
@@ -87,22 +88,15 @@ export default function AdminPage() {
   }
 
   const loadUserData = async (userId: string) => {
-    // Load profile
     const { data: profileData } = await supabase.from("profiles").select("*").eq("id", userId).single()
-
-    // Load settings
     const { data: settingsData } = await supabase.from("settings").select("*").eq("id", userId).single()
-
-    // Load links
     const { data: linksData } = await supabase.from("links").select("*").eq("user_id", userId).order("order_index")
-
-    // Load QR metrics
     const { data: qrMetricsData } = await supabase.from("qr_code_metrics").select("*").eq("user_id", userId).single()
 
     setProfile(profileData)
     setSettings(settingsData)
     setLinks(linksData || [])
-    setQrMetrics(qrMetricsData) // Definir o estado das métricas do QR
+    setQrMetrics(qrMetricsData)
   }
 
   const handleSignOut = async () => {
@@ -185,7 +179,6 @@ export default function AdminPage() {
 
     setSaving(true)
     try {
-      // Update profile
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -193,19 +186,17 @@ export default function AdminPage() {
           business_description: profile.business_description,
           business_logo_url: profile.business_logo_url,
           company_logo_url: profile.company_logo_url,
-          username: profile.username, // Salvar o username
+          username: profile.username,
         })
         .eq("id", user.id)
 
       if (profileError) {
         if (profileError.code === "23505") {
-          // Código de erro para violação de unicidade
           setUsernameError("Este nome de usuário já está em uso. Por favor, escolha outro.")
         }
         throw profileError
       }
 
-      // Update settings
       const { error: settingsError } = await supabase
         .from("settings")
         .update({
@@ -218,10 +209,8 @@ export default function AdminPage() {
 
       if (settingsError) throw settingsError
 
-      // Update links
       for (const link of links) {
         if (link.id.startsWith("temp-")) {
-          // Insert new link
           const { error } = await supabase.from("links").insert({
             user_id: user.id,
             title: link.title,
@@ -233,7 +222,6 @@ export default function AdminPage() {
           })
           if (error) throw error
         } else {
-          // Update existing link
           const { error } = await supabase
             .from("links")
             .update({
@@ -250,12 +238,11 @@ export default function AdminPage() {
       }
 
       setMessage("Dados salvos com sucesso!")
-      await loadUserData(user.id) // Reload data
-      router.push(`/${profile.username}`) // Redireciona para a nova URL
+      await loadUserData(user.id)
+      router.push(`/${profile.username}`)
     } catch (error) {
       console.error("Error saving data:", error)
       if (!usernameError) {
-        // Não sobrescreve erro de username
         setMessage("Erro ao salvar dados")
       }
     }
@@ -308,10 +295,9 @@ export default function AdminPage() {
     } else if (direction === "down" && index < newLinks.length) {
       newLinks.splice(index + 1, 0, movedLink)
     } else {
-      return // Cannot move further
+      return
     }
 
-    // Update order_index
     const updatedLinks = newLinks.map((link, idx) => ({
       ...link,
       order_index: idx,
@@ -324,7 +310,27 @@ export default function AdminPage() {
     const result = await resetQrScanCount(user.id)
     setMessage(result.message)
     if (result.success) {
-      await loadUserData(user.id) // Recarrega os dados para atualizar o contador
+      await loadUserData(user.id)
+    }
+  }
+
+  // Nova função para baixar o QR Code
+  const handleDownloadQrCode = () => {
+    if (qrCodeRef.current) {
+      const svgElement = qrCodeRef.current.querySelector("svg")
+      if (svgElement) {
+        const svgData = new XMLSerializer().serializeToString(svgElement)
+        const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" })
+        const svgUrl = URL.createObjectURL(svgBlob)
+
+        const downloadLink = document.createElement("a")
+        downloadLink.href = svgUrl
+        downloadLink.download = `${profile?.username || "pwerlink"}-qrcode.svg` // Nome do arquivo
+        document.body.appendChild(downloadLink)
+        downloadLink.click()
+        document.body.removeChild(downloadLink)
+        URL.revokeObjectURL(svgUrl) // Libera a URL do objeto
+      }
     }
   }
 
@@ -382,12 +388,10 @@ export default function AdminPage() {
 
         <Tabs defaultValue="links" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
-            {" "}
-            {/* Alterado para 4 colunas */}
             <TabsTrigger value="links">Links</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
             <TabsTrigger value="design">Design</TabsTrigger>
-            <TabsTrigger value="qrcode">QR Code</TabsTrigger> {/* Nova aba */}
+            <TabsTrigger value="qrcode">QR Code</TabsTrigger>
           </TabsList>
 
           <TabsContent value="links" className="space-y-4">
@@ -694,8 +698,8 @@ export default function AdminPage() {
                 {profile?.username ? (
                   <>
                     <p className="text-gray-700">Escaneie este QR Code para acessar seu Linktree:</p>
-                    <div className="flex justify-center p-4 bg-white rounded-lg shadow-inner">
-                      <QRCode value={qrCodeUrl} size={256} level="H" />
+                    <div ref={qrCodeRef} className="flex justify-center p-4 bg-white rounded-lg shadow-inner">
+                      {qrCodeUrl && <QRCode value={qrCodeUrl} size={256} level="H" />}
                     </div>
                     <p className="text-sm text-gray-500 break-all">
                       URL:{" "}
@@ -708,6 +712,14 @@ export default function AdminPage() {
                         {qrCodeUrl}
                       </a>
                     </p>
+                    <Button
+                      onClick={handleDownloadQrCode}
+                      className="mt-4 flex items-center gap-2 mx-auto"
+                      disabled={!qrCodeUrl}
+                    >
+                      <Download className="w-4 h-4" />
+                      Baixar QR Code
+                    </Button>
                     <div className="mt-6">
                       <h3 className="text-lg font-semibold text-gray-800">Métricas de Acesso</h3>
                       <p className="text-2xl font-bold text-gray-900 mt-2">{qrMetrics?.scan_count ?? 0} acessos</p>

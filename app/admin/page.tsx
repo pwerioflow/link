@@ -28,6 +28,7 @@ import {
   QrCode,
   RotateCcw,
   Package,
+  X,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -234,11 +235,55 @@ export default function AdminPage() {
       setProducts((prev) =>
         prev.map((product) => (product.id === productId ? { ...product, image_url: publicUrl } : product)),
       )
-      setMessage("Imagem do produto carregada com sucesso!")
+      setMessage("Imagem principal do produto carregada com sucesso!")
     } catch (error) {
       console.error("Error uploading product image:", error)
       setMessage("Erro ao fazer upload da imagem do produto")
     }
+  }
+
+  const handleGalleryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, productId: string) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0 || !user) return
+
+    const product = products.find((p) => p.id === productId)
+    const currentGallery = product?.gallery_images || []
+
+    if (currentGallery.length + files.length > 5) {
+      setMessage(`Você pode adicionar no máximo 5 imagens. Atualmente você tem ${currentGallery.length} imagens.`)
+      return
+    }
+
+    try {
+      const uploadPromises = files.map(async (file) => {
+        const path = `${user.id}/products/gallery/${file.name}-${Date.now()}`
+        return await uploadFile(file, "logos", path)
+      })
+
+      const uploadedUrls = await Promise.all(uploadPromises)
+      const newGallery = [...currentGallery, ...uploadedUrls]
+
+      setProducts((prev) =>
+        prev.map((product) => (product.id === productId ? { ...product, gallery_images: newGallery } : product)),
+      )
+      setMessage(`${uploadedUrls.length} imagem(ns) adicionada(s) à galeria!`)
+    } catch (error) {
+      console.error("Error uploading gallery images:", error)
+      setMessage("Erro ao fazer upload das imagens da galeria")
+    }
+  }
+
+  const removeGalleryImage = (productId: string, imageIndex: number) => {
+    setProducts((prev) =>
+      prev.map((product) => {
+        if (product.id === productId && product.gallery_images) {
+          const newGallery = [...product.gallery_images]
+          newGallery.splice(imageIndex, 1)
+          return { ...product, gallery_images: newGallery }
+        }
+        return product
+      }),
+    )
   }
 
   const validateUsername = (username: string) => {
@@ -880,7 +925,7 @@ export default function AdminPage() {
 
                         <div className="md:col-span-2 space-y-3">
                           <div>
-                            <Label>Imagem do Produto</Label>
+                            <Label>Imagem Principal</Label>
                             <div className="flex gap-2 items-center">
                               <Input
                                 type="file"
@@ -901,6 +946,51 @@ export default function AdminPage() {
                               )}
                             </div>
                           </div>
+
+                          <div>
+                            <Label>Galeria de Imagens (máximo 5)</Label>
+                            <div className="space-y-2">
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={(e) => handleGalleryImageUpload(e, product.id)}
+                                className="flex-1"
+                                disabled={(product.gallery_images?.length || 0) >= 5}
+                              />
+                              <p className="text-xs text-gray-500">
+                                {product.gallery_images?.length || 0}/5 imagens adicionadas
+                              </p>
+
+                              {/* Preview das imagens da galeria */}
+                              {product.gallery_images && product.gallery_images.length > 0 && (
+                                <div className="flex gap-2 flex-wrap">
+                                  {product.gallery_images.map((imageUrl, index) => (
+                                    <div
+                                      key={index}
+                                      className="relative w-16 h-16 bg-gray-100 rounded-lg overflow-hidden"
+                                    >
+                                      <Image
+                                        src={imageUrl || "/placeholder.svg"}
+                                        alt={`Galeria ${index + 1}`}
+                                        width={64}
+                                        height={64}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <Button
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full"
+                                        onClick={() => removeGalleryImage(product.id, index)}
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -914,6 +1004,7 @@ export default function AdminPage() {
             </div>
           </TabsContent>
 
+          {/* Outras tabs permanecem iguais... */}
           <TabsContent value="settings" className="space-y-6">
             {profile && (
               <>

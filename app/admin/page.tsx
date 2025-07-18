@@ -18,6 +18,7 @@ import {
   Globe,
   Download,
   MessageCircle,
+  Play,
   Trash2,
   Plus,
   Save,
@@ -50,6 +51,7 @@ const iconMap = {
   website: <Globe />,
   download: <Download />,
   whatsapp: <MessageCircle />,
+  video: <Play />, // Adicionar esta linha
 }
 
 export default function AdminPage() {
@@ -782,6 +784,7 @@ export default function AdminPage() {
                                 <SelectItem value="email">Email</SelectItem>
                                 <SelectItem value="whatsapp">WhatsApp</SelectItem>
                                 <SelectItem value="download">Download</SelectItem>
+                                <SelectItem value="video">Vídeo</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -800,6 +803,7 @@ export default function AdminPage() {
                                 <SelectItem value="website">Website</SelectItem>
                                 <SelectItem value="download">Download</SelectItem>
                                 <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                                <SelectItem value="video">Vídeo</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -823,7 +827,13 @@ export default function AdminPage() {
                           ) : (
                             <div>
                               <Label>
-                                {link.type === "email" ? "Email" : link.type === "whatsapp" ? "Número WhatsApp" : "URL"}
+                                {link.type === "email"
+                                  ? "Email"
+                                  : link.type === "whatsapp"
+                                    ? "Número WhatsApp"
+                                    : link.type === "video"
+                                      ? "URL do Vídeo (YouTube ou Vimeo)"
+                                      : "URL"}
                               </Label>
                               <Input
                                 value={link.href}
@@ -833,7 +843,9 @@ export default function AdminPage() {
                                     ? "exemplo@email.com"
                                     : link.type === "whatsapp"
                                       ? "5511999999999"
-                                      : "https://exemplo.com"
+                                      : link.type === "video"
+                                        ? "https://www.youtube.com/watch?v=... ou https://vimeo.com/..."
+                                        : "https://exemplo.com"
                                 }
                               />
                             </div>

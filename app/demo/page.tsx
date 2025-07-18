@@ -1,16 +1,17 @@
 "use client"
-import { Instagram, Mail, Globe, Download, MessageCircle, ExternalLink } from "lucide-react"
+import { Instagram, Mail, Globe, Download, MessageCircle, Play, ExternalLink } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import VideoLinkButton from "../[username]/video-link-button"
 
 interface LinkItem {
   id: string
   href: string
   title: string
   subtitle: string
-  type: "link" | "email" | "whatsapp" | "download"
-  iconType: "instagram" | "email" | "website" | "download" | "whatsapp"
+  type: "link" | "email" | "whatsapp" | "download" | "video"
+  iconType: "instagram" | "email" | "website" | "download" | "whatsapp" | "video"
 }
 
 interface AppSettings {
@@ -30,6 +31,7 @@ const iconMap = {
   website: <Globe />,
   download: <Download />,
   whatsapp: <MessageCircle />,
+  video: <Play />,
 }
 
 const demoSettings: AppSettings = {
@@ -75,6 +77,14 @@ const demoLinks: LinkItem[] = [
     subtitle: "Fale conosco",
     type: "whatsapp",
     iconType: "whatsapp",
+  },
+  {
+    id: "5",
+    href: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    title: "Vídeo Demonstração",
+    subtitle: "Assista nosso vídeo",
+    type: "video",
+    iconType: "video",
   },
 ]
 
@@ -168,9 +178,13 @@ export default function DemoPage() {
 
         {/* Links */}
         <div className="space-y-4 mb-12">
-          {demoLinks.map((link) => (
-            <LinkButton key={link.id} link={link} settings={demoSettings} />
-          ))}
+          {demoLinks.map((link) =>
+            link.type === "video" ? (
+              <VideoLinkButton key={link.id} link={link} settings={demoSettings} />
+            ) : (
+              <LinkButton key={link.id} link={link} settings={demoSettings} />
+            ),
+          )}
         </div>
 
         {/* Call to Action */}

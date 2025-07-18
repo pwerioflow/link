@@ -84,8 +84,8 @@ export interface Database {
           title: string
           subtitle: string | null
           href: string
-          type: "link" | "email" | "whatsapp" | "download"
-          icon_type: "instagram" | "email" | "website" | "download" | "whatsapp"
+          type: "link" | "email" | "whatsapp" | "download" | "video"
+          icon_type: "instagram" | "email" | "website" | "download" | "whatsapp" | "video"
           order_index: number
           is_active: boolean
           created_at: string
@@ -97,8 +97,8 @@ export interface Database {
           title: string
           subtitle?: string | null
           href: string
-          type: "link" | "email" | "whatsapp" | "download"
-          icon_type: "instagram" | "email" | "website" | "download" | "whatsapp"
+          type: "link" | "email" | "whatsapp" | "download" | "video"
+          icon_type: "instagram" | "email" | "website" | "download" | "whatsapp" | "video"
           order_index?: number
           is_active?: boolean
           created_at?: string
@@ -110,8 +110,8 @@ export interface Database {
           title?: string
           subtitle?: string | null
           href?: string
-          type?: "link" | "email" | "whatsapp" | "download"
-          icon_type?: "instagram" | "email" | "website" | "download" | "whatsapp"
+          type?: "link" | "email" | "whatsapp" | "download" | "video"
+          icon_type?: "instagram" | "email" | "website" | "download" | "whatsapp" | "video"
           order_index?: number
           is_active?: boolean
           created_at?: string

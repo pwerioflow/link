@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { Instagram, Mail, Globe, Download, MessageCircle } from "lucide-react"
+import { Instagram, Mail, Globe, Download, MessageCircle, Play } from "lucide-react"
 import Image from "next/image"
 import { notFound, redirect } from "next/navigation"
 import { incrementQrScanCount } from "@/lib/supabase/qr-tracking"
@@ -11,6 +11,7 @@ import { CartProvider } from "@/lib/context/cart-context"
 import { CartButton } from "@/components/cart/cart-button"
 import { CartDrawer } from "@/components/cart/cart-drawer"
 import ProductCard from "./product-card"
+import VideoLinkButton from "./video-link-button"
 
 const iconMap = {
   instagram: <Instagram />,
@@ -18,6 +19,7 @@ const iconMap = {
   website: <Globe />,
   download: <Download />,
   whatsapp: <MessageCircle />,
+  video: <Play />,
 }
 
 export async function generateMetadata({ params }: { params: { username: string } }): Promise<Metadata> {
@@ -172,9 +174,13 @@ export default async function UserLinktreePage({
 
           {/* Links */}
           <div className="space-y-4 mb-12">
-            {links?.map((link) => (
-              <ClientLinkButton key={link.id} link={link} settings={settings} icon={iconMap[link.icon_type]} />
-            ))}
+            {links?.map((link) =>
+              link.type === "video" ? (
+                <VideoLinkButton key={link.id} link={link} settings={settings} />
+              ) : (
+                <ClientLinkButton key={link.id} link={link} settings={settings} icon={iconMap[link.icon_type]} />
+              ),
+            )}
           </div>
 
           {/* Rodapé com Pwer Io */}

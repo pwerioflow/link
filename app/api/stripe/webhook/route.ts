@@ -2,14 +2,15 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
-})
-
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
-
 export async function POST(request: Request) {
   try {
+    // Mover a inicialização do Stripe para dentro da função
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: "2024-06-20",
+    })
+
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
+
     const body = await request.text()
     const sig = request.headers.get("stripe-signature")!
 

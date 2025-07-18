@@ -58,11 +58,20 @@ export default function AdminPage() {
   const [links, setLinks] = useState<LinkItem[]>([])
   const [products, setProducts] = useState<ProductItem[]>([])
   const [qrMetrics, setQrMetrics] = useState<QrCodeMetrics | null>(null)
+  const [subscription, setSubscription] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
   const [landingPageUrl, setLandingPageUrl] = useState("")
   const [usernameError, setUsernameError] = useState("")
+  const [stripeStatus, setStripeStatus] = useState({
+    connected: false,
+    onboarding_complete: false,
+    charges_enabled: false,
+    payouts_enabled: false,
+  })
+  const [stripeLoading, setStripeLoading] = useState(false)
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false)
 
   const supabase = createClient()
   const router = useRouter()
@@ -101,12 +110,57 @@ export default function AdminPage() {
       .eq("user_id", userId)
       .order("order_index")
     const { data: qrMetricsData } = await supabase.from("qr_code_metrics").select("*").eq("user_id", userId).single()
+    const { data: subscriptionData } = await supabase.from("subscriptions").select("*").eq("user_id", userId).single()
 
     setProfile(profileData)
     setSettings(settingsData)
     setLinks(linksData || [])
     setProducts(productsData || [])
     setQrMetrics(qrMetricsData)
+    setSubscription(subscriptionData)
+  }
+
+  const handleCreateSubscription = async () => {
+    setSubscriptionLoading(true)
+    try {
+      const response = await fetch("/api/subscription/create", {
+        method: "POST",
+      })
+      const data = await response.json()
+
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setMessage("Erro ao criar assinatura: " + data.error)
+      }
+    } catch (error) {
+      console.error("Subscription creation error:", error)
+      setMessage("Erro ao criar assinatura")
+    }
+    setSubscriptionLoading(false)
+  }
+
+  const handleCancelSubscription = async () => {
+    if (!confirm("Tem certeza que deseja cancelar sua assinatura?")) return
+
+    setSubscriptionLoading(true)
+    try {
+      const response = await fetch("/api/subscription/cancel", {
+        method: "POST",
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        setMessage("Assinatura cancelada com sucesso. Você terá acesso até o final do período atual.")
+        await loadUserData(user.id)
+      } else {
+        setMessage("Erro ao cancelar assinatura: " + data.error)
+      }
+    } catch (error) {
+      console.error("Subscription cancellation error:", error)
+      setMessage("Erro ao cancelar assinatura")
+    }
+    setSubscriptionLoading(false)
   }
 
   const handleSignOut = async () => {
@@ -445,6 +499,77 @@ export default function AdminPage() {
     }
   }
 
+  const checkStripeStatus = async () => {
+    try {
+      const response = await fetch("/api/stripe/connect/status")
+      const status = await response.json()
+      setStripeStatus(status)
+    } catch (error) {
+      console.error("Error checking Stripe status:", error)
+    }
+  }
+
+  const handleStripeConnect = async () => {
+    setStripeLoading(true)
+    try {
+      const response = await fetch("/api/stripe/connect", {
+        method: "POST",
+      })
+      const data = await response.json()
+
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setMessage("Erro ao conectar com Stripe: " + data.error)
+      }
+    } catch (error) {
+      console.error("Stripe connect error:", error)
+      setMessage("Erro ao conectar com Stripe")
+    }
+    setStripeLoading(false)
+  }
+
+  const handleStripeRefresh = async () => {
+    setStripeLoading(true)
+    try {
+      const response = await fetch("/api/stripe/connect/refresh", {
+        method: "POST",
+      })
+      const data = await response.json()
+
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        setMessage("Erro ao atualizar Stripe: " + data.error)
+      }
+    } catch (error) {
+      console.error("Stripe refresh error:", error)
+      setMessage("Erro ao atualizar Stripe")
+    }
+    setStripeLoading(false)
+  }
+
+  useEffect(() => {
+    if (user) {
+      checkStripeStatus()
+    }
+  }, [user])
+
+  // Verificar parâmetros da URL para sucesso/refresh do Stripe
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get("stripe_success") === "true") {
+      setMessage("Conta Stripe conectada com sucesso!")
+      checkStripeStatus()
+      // Limpar parâmetros da URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+    } else if (urlParams.get("stripe_refresh") === "true") {
+      setMessage("Por favor, complete a configuração da sua conta Stripe.")
+      // Limpar parâmetros da URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, [])
+
   if (loading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Carregando...</div>
   }
@@ -498,10 +623,12 @@ export default function AdminPage() {
         )}
 
         <Tabs defaultValue="links" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="links">Links</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
             <TabsTrigger value="design">Design</TabsTrigger>
+            <TabsTrigger value="payments">Pagamentos</TabsTrigger>
+            <TabsTrigger value="subscription">Assinatura</TabsTrigger>
             <TabsTrigger value="qrcode">QR Code</TabsTrigger>
           </TabsList>
 
@@ -897,6 +1024,206 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="payments" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">💳 Configuração de Pagamentos</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!stripeStatus.connected ? (
+                  <div className="text-center py-6">
+                    <p className="text-gray-600 mb-4">
+                      Conecte sua conta Stripe para receber pagamentos pelos seus produtos.
+                    </p>
+                    <Button onClick={handleStripeConnect} disabled={stripeLoading} className="flex items-center gap-2">
+                      {stripeLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Conectando...
+                        </>
+                      ) : (
+                        <>🔗 Conectar Conta Stripe</>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div
+                        className={`p-4 rounded-lg border ${stripeStatus.onboarding_complete ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={stripeStatus.onboarding_complete ? "✅" : "⏳"}>
+                            {stripeStatus.onboarding_complete ? "✅" : "⏳"}
+                          </span>
+                          <span className="font-medium">Configuração</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {stripeStatus.onboarding_complete ? "Completa" : "Pendente"}
+                        </p>
+                      </div>
+
+                      <div
+                        className={`p-4 rounded-lg border ${stripeStatus.charges_enabled ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>{stripeStatus.charges_enabled ? "✅" : "❌"}</span>
+                          <span className="font-medium">Receber Pagamentos</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {stripeStatus.charges_enabled ? "Habilitado" : "Desabilitado"}
+                        </p>
+                      </div>
+
+                      <div
+                        className={`p-4 rounded-lg border ${stripeStatus.payouts_enabled ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>{stripeStatus.payouts_enabled ? "✅" : "❌"}</span>
+                          <span className="font-medium">Saques</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {stripeStatus.payouts_enabled ? "Habilitado" : "Desabilitado"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {!stripeStatus.onboarding_complete && (
+                      <div className="text-center py-4">
+                        <p className="text-gray-600 mb-4">
+                          Complete a configuração da sua conta para começar a receber pagamentos.
+                        </p>
+                        <Button
+                          onClick={handleStripeRefresh}
+                          disabled={stripeLoading}
+                          variant="outline"
+                          className="bg-transparent"
+                        >
+                          {stripeLoading ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2" />
+                              Carregando...
+                            </>
+                          ) : (
+                            "Completar Configuração"
+                          )}
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-900 mb-2">ℹ️ Informações Importantes</h4>
+                      <ul className="text-sm text-blue-800 space-y-1">
+                        <li>• Taxa da plataforma: 5% por transação</li>
+                        <li>• Pagamentos processados diretamente na sua conta Stripe</li>
+                        <li>• Suporte a cartão de crédito e PIX</li>
+                        <li>• Saques automáticos conforme configuração do Stripe</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="subscription" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">💳 Gerenciar Assinatura</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {subscription ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div
+                        className={`p-4 rounded-lg border ${
+                          subscription.status === "active"
+                            ? "bg-green-50 border-green-200"
+                            : subscription.status === "trialing"
+                              ? "bg-blue-50 border-blue-200"
+                              : "bg-red-50 border-red-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>
+                            {subscription.status === "active" ? "✅" : subscription.status === "trialing" ? "🆓" : "❌"}
+                          </span>
+                          <span className="font-medium">Status</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {subscription.status === "active"
+                            ? "Ativa"
+                            : subscription.status === "trialing"
+                              ? "Período de Teste"
+                              : subscription.status === "past_due"
+                                ? "Pagamento Pendente"
+                                : subscription.status === "canceled"
+                                  ? "Cancelada"
+                                  : "Inativa"}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg border bg-gray-50 border-gray-200">
+                        <div className="flex items-center gap-2">
+                          <span>💰</span>
+                          <span className="font-medium">Plano</span>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {subscription.plan_name} - R$ {subscription.plan_price.toFixed(2)}/mês
+                        </p>
+                      </div>
+                    </div>
+
+                    {subscription.trial_end && new Date(subscription.trial_end) > new Date() && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="font-medium text-blue-900 mb-2">🎉 Período de Teste Ativo</h4>
+                        <p className="text-sm text-blue-800">
+                          Seu período de teste termina em:{" "}
+                          {new Date(subscription.trial_end).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                    )}
+
+                    {subscription.current_period_end && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <h4 className="font-medium text-gray-900 mb-2">📅 Próxima Cobrança</h4>
+                        <p className="text-sm text-gray-600">
+                          {subscription.status === "active"
+                            ? `Próxima cobrança em: ${new Date(subscription.current_period_end).toLocaleDateString("pt-BR")}`
+                            : `Acesso válido até: ${new Date(subscription.current_period_end).toLocaleDateString("pt-BR")}`}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      {subscription.status === "inactive" || subscription.status === "canceled" ? (
+                        <Button onClick={handleCreateSubscription} disabled={subscriptionLoading}>
+                          {subscriptionLoading ? "Carregando..." : "Reativar Assinatura"}
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={handleCancelSubscription}
+                          disabled={subscriptionLoading}
+                          variant="outline"
+                          className="bg-transparent"
+                        >
+                          {subscriptionLoading ? "Carregando..." : "Cancelar Assinatura"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-gray-600 mb-4">Assine o Pwerlink para ter acesso completo à plataforma.</p>
+                    <Button onClick={handleCreateSubscription} disabled={subscriptionLoading}>
+                      {subscriptionLoading ? "Carregando..." : "Assinar por R$ 29,90/mês"}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="qrcode" className="space-y-6">

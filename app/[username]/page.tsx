@@ -91,6 +91,10 @@ export default async function UserLinktreePage({
     await incrementQrScanCount(profile.id)
   }
 
+  // Verificar parâmetros de checkout
+  const checkoutSuccess = searchParams.checkout === "success"
+  const checkoutCancel = searchParams.checkout === "cancel"
+
   return (
     <CartProvider>
       <div className="min-h-screen bg-white">
@@ -115,6 +119,31 @@ export default async function UserLinktreePage({
             <h1 className="text-2xl font-bold text-gray-800 mb-2">{profile.business_name}</h1>
             <p className="text-gray-600 text-sm">{profile.business_description}</p>
           </div>
+
+          {/* Mensagens de Checkout */}
+          {checkoutSuccess && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 text-green-800">
+                <span className="text-xl">✅</span>
+                <div>
+                  <h3 className="font-semibold">Pagamento realizado com sucesso!</h3>
+                  <p className="text-sm">Obrigado pela sua compra. Você receberá um email de confirmação em breve.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {checkoutCancel && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center gap-2 text-yellow-800">
+                <span className="text-xl">⚠️</span>
+                <div>
+                  <h3 className="font-semibold">Pagamento cancelado</h3>
+                  <p className="text-sm">Sua compra foi cancelada. Os itens ainda estão no seu carrinho.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Produtos */}
           {products && products.length > 0 && (

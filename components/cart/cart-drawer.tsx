@@ -12,9 +12,33 @@ export function CartDrawer() {
   if (!state.isOpen) return null
 
   const handleCheckout = async () => {
-    // Implementar checkout com Stripe
-    console.log("Iniciando checkout...", state.items)
-    // TODO: Integrar com Stripe
+    try {
+      // Pegar username da URL atual
+      const username = window.location.pathname.split("/")[1]
+
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: state.items,
+          username: username,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        console.error("Checkout error:", data.error)
+        alert("Erro ao processar checkout: " + data.error)
+      }
+    } catch (error) {
+      console.error("Checkout error:", error)
+      alert("Erro ao processar checkout")
+    }
   }
 
   return (

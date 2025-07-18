@@ -11,6 +11,10 @@ export interface Database {
           created_at: string
           updated_at: string
           username: string | null
+          stripe_account_id: string | null
+          stripe_onboarding_complete: boolean
+          stripe_charges_enabled: boolean
+          stripe_payouts_enabled: boolean
         }
         Insert: {
           id: string
@@ -21,6 +25,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
           username?: string | null
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean
+          stripe_charges_enabled?: boolean
+          stripe_payouts_enabled?: boolean
         }
         Update: {
           id?: string
@@ -31,6 +39,10 @@ export interface Database {
           created_at?: string
           updated_at?: string
           username?: string | null
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean
+          stripe_charges_enabled?: boolean
+          stripe_payouts_enabled?: boolean
         }
       }
       settings: {
@@ -140,6 +152,50 @@ export interface Database {
           stripe_price_id?: string | null
           is_active?: boolean
           order_index?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          stripe_subscription_id: string | null
+          stripe_customer_id: string | null
+          status: "active" | "inactive" | "canceled" | "past_due" | "trialing"
+          current_period_start: string | null
+          current_period_end: string | null
+          trial_end: string | null
+          plan_name: string
+          plan_price: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          stripe_subscription_id?: string | null
+          stripe_customer_id?: string | null
+          status?: "active" | "inactive" | "canceled" | "past_due" | "trialing"
+          current_period_start?: string | null
+          current_period_end?: string | null
+          trial_end?: string | null
+          plan_name?: string
+          plan_price?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          stripe_subscription_id?: string | null
+          stripe_customer_id?: string | null
+          status?: "active" | "inactive" | "canceled" | "past_due" | "trialing"
+          current_period_start?: string | null
+          current_period_end?: string | null
+          trial_end?: string | null
+          plan_name?: string
+          plan_price?: number
           created_at?: string
           updated_at?: string
         }

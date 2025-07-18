@@ -180,25 +180,30 @@ export default function AdminPage() {
     return publicUrl
   }
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "business" | "company") => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: "business" | "company" | "hero") => {
     const file = e.target.files?.[0]
     if (!file || !user) return
 
     try {
-      const path = `${user.id}/${type}-logo-${Date.now()}`
+      const path = `${user.id}/${type}-${type === "hero" ? "banner" : "logo"}-${Date.now()}`
       const publicUrl = await uploadFile(file, "logos", path)
 
-      const updateData = type === "business" ? { business_logo_url: publicUrl } : { company_logo_url: publicUrl }
+      const updateData =
+        type === "business"
+          ? { business_logo_url: publicUrl }
+          : type === "company"
+            ? { company_logo_url: publicUrl }
+            : { hero_banner_url: publicUrl }
 
       const { error } = await supabase.from("profiles").update(updateData).eq("id", user.id)
 
       if (error) throw error
 
       setProfile((prev) => (prev ? { ...prev, ...updateData } : null))
-      setMessage("Logo atualizado com sucesso!")
+      setMessage(`${type === "hero" ? "Hero banner" : "Logo"} atualizado com sucesso!`)
     } catch (error) {
-      console.error("Error uploading logo:", error)
-      setMessage("Erro ao fazer upload do logo")
+      console.error("Error uploading:", error)
+      setMessage(`Erro ao fazer upload do ${type === "hero" ? "hero banner" : "logo"}`)
     }
   }
 
@@ -268,6 +273,7 @@ export default function AdminPage() {
           business_description: profile.business_description,
           business_logo_url: profile.business_logo_url,
           company_logo_url: profile.company_logo_url,
+          hero_banner_url: profile.hero_banner_url,
           username: profile.username,
         })
         .eq("id", user.id)
@@ -384,6 +390,9 @@ export default function AdminPage() {
       description: "",
       price: 0,
       image_url: null,
+      gallery_images: null,
+      display_size: "full", // Padrão largura inteira
+      stock_quantity: null,
       stripe_price_id: null,
       order_index: products.length,
       is_active: true,
@@ -820,6 +829,36 @@ export default function AdminPage() {
                               }
                             />
                           </div>
+                          <div>
+                            <Label>Estoque (opcional)</Label>
+                            <Input
+                              type="number"
+                              value={product.stock_quantity || ""}
+                              onChange={(e) =>
+                                updateProduct(product.id, {
+                                  stock_quantity: e.target.value ? Number.parseInt(e.target.value) : null,
+                                })
+                              }
+                              placeholder="Deixe vazio para estoque ilimitado"
+                            />
+                          </div>
+                          <div>
+                            <Label>Tamanho do Card</Label>
+                            <Select
+                              value={product.display_size}
+                              onValueChange={(value: "half" | "full") =>
+                                updateProduct(product.id, { display_size: value })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="full">Largura Inteira</SelectItem>
+                                <SelectItem value="half">Meia Página</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
 
                         <div className="space-y-3">
@@ -944,6 +983,24 @@ export default function AdminPage() {
                             src={profile.company_logo_url || "/placeholder.svg"}
                             alt="Logo da empresa"
                             className="w-12 h-12 rounded object-cover"
+                          />
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Hero Banner (opcional)</Label>
+                      <div className="flex items-center gap-4">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleLogoUpload(e, "hero")}
+                          className="flex-1"
+                        />
+                        {profile.hero_banner_url && (
+                          <img
+                            src={profile.hero_banner_url || "/placeholder.svg"}
+                            alt="Hero Banner"
+                            className="w-20 h-12 rounded object-cover"
                           />
                         )}
                       </div>

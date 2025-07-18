@@ -98,6 +98,19 @@ export default async function UserLinktreePage({
   return (
     <CartProvider>
       <div className="min-h-screen bg-white">
+        {/* Hero Banner */}
+        {profile.hero_banner_url && (
+          <div className="w-full h-48 md:h-64 lg:h-80 relative mb-8">
+            <Image
+              src={profile.hero_banner_url || "/placeholder.svg"}
+              alt="Hero Banner"
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+        )}
+
         <div className="max-w-md mx-auto px-6 py-8">
           {/* Logo do Empreendimento */}
           <div className="text-center mb-8">

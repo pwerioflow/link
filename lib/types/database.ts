@@ -8,6 +8,7 @@ export interface Database {
           business_description: string | null
           business_logo_url: string | null
           company_logo_url: string | null
+          hero_banner_url: string | null
           created_at: string
           updated_at: string
           username: string | null
@@ -22,6 +23,7 @@ export interface Database {
           business_description?: string | null
           business_logo_url?: string | null
           company_logo_url?: string | null
+          hero_banner_url?: string | null
           created_at?: string
           updated_at?: string
           username?: string | null
@@ -36,6 +38,7 @@ export interface Database {
           business_description?: string | null
           business_logo_url?: string | null
           company_logo_url?: string | null
+          hero_banner_url?: string | null
           created_at?: string
           updated_at?: string
           username?: string | null
@@ -123,6 +126,9 @@ export interface Database {
           description: string | null
           price: number
           image_url: string | null
+          gallery_images: string[] | null
+          display_size: "half" | "full"
+          stock_quantity: number | null
           stripe_price_id: string | null
           is_active: boolean
           order_index: number
@@ -136,6 +142,9 @@ export interface Database {
           description?: string | null
           price: number
           image_url?: string | null
+          gallery_images?: string[] | null
+          display_size?: "half" | "full"
+          stock_quantity?: number | null
           stripe_price_id?: string | null
           is_active?: boolean
           order_index?: number
@@ -149,6 +158,9 @@ export interface Database {
           description?: string | null
           price?: number
           image_url?: string | null
+          gallery_images?: string[] | null
+          display_size?: "half" | "full"
+          stock_quantity?: number | null
           stripe_price_id?: string | null
           is_active?: boolean
           order_index?: number

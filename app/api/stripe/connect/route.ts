@@ -4,31 +4,11 @@ import Stripe from "stripe"
 
 export async function POST(request: Request) {
   try {
-    // Verificar se a chave do Stripe existe
+    // Verificações básicas
     if (!process.env.STRIPE_SECRET_KEY) {
-      console.error("STRIPE_SECRET_KEY not found in environment variables")
-      return NextResponse.json(
-        {
-          error: "Stripe configuration missing",
-          details: "STRIPE_SECRET_KEY not configured",
-        },
-        { status: 500 },
-      )
+      return NextResponse.json({ error: "STRIPE_SECRET_KEY not configured" }, { status: 500 })
     }
 
-    // Verificar se a chave tem o formato correto
-    if (!process.env.STRIPE_SECRET_KEY.startsWith("sk_")) {
-      console.error("STRIPE_SECRET_KEY has invalid format")
-      return NextResponse.json(
-        {
-          error: "Invalid Stripe key format",
-          details: "STRIPE_SECRET_KEY should start with 'sk_'",
-        },
-        { status: 500 },
-      )
-    }
-
-    // Inicializar Stripe
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
       apiVersion: "2024-06-20",
     })
@@ -49,19 +29,8 @@ export async function POST(request: Request) {
       .eq("id", user.id)
       .single()
 
-    if (profileError) {
-      console.error("Profile fetch error:", profileError)
-      return NextResponse.json(
-        {
-          error: "Profile not found",
-          details: profileError.message,
-        },
-        { status: 404 },
-      )
-    }
-
-    if (!profile) {
-      return NextResponse.json({ error: "Profile not found" }, { status: 404 })
+    if (profileError || !profile) {
+      return NextResponse.json({ error: "Profile not found", details: profileError?.message }, { status: 404 })
     }
 
     let accountId = profile.stripe_account_id
@@ -69,15 +38,24 @@ export async function POST(request: Request) {
     // Se não tem conta Stripe, criar uma nova
     if (!accountId) {
       try {
-        const account = await stripe.accounts.create({
-          type: "express",
-          country: "BR",
-          email: user.email,
-          business_profile: {
-            name: profile.business_name,
-          },
-        })
+        console.log("Creating Stripe account for user:", user.id)
+        console.log("User email:", user.email)
+        console.log("Business name:", profile.business_name)
 
+        const accountData = {
+          type: "express" as const,
+          country: "BR",
+          email: user.email || undefined,
+          business_profile: {
+            name: profile.business_name || "Meu Negócio",
+          },
+        }
+
+        console.log("Account data:", JSON.stringify(accountData, null, 2))
+
+        const account = await stripe.accounts.create(accountData)
+
+        console.log("Stripe account created:", account.id)
         accountId = account.id
 
         // Salvar o account_id no banco
@@ -89,31 +67,47 @@ export async function POST(request: Request) {
         if (updateError) {
           console.error("Database update error:", updateError)
           return NextResponse.json(
-            {
-              error: "Failed to save Stripe account",
-              details: updateError.message,
-            },
+            { error: "Failed to save Stripe account", details: updateError.message },
             { status: 500 },
           )
         }
+
+        console.log("Stripe account ID saved to database")
       } catch (stripeError: any) {
-        console.error("Stripe account creation error:", stripeError)
+        console.error("Stripe account creation error:", {
+          message: stripeError.message,
+          type: stripeError.type,
+          code: stripeError.code,
+          param: stripeError.param,
+          decline_code: stripeError.decline_code,
+          request_id: stripeError.request_id,
+        })
+
+        // Retornar erro mais detalhado
         return NextResponse.json(
           {
             error: "Failed to create Stripe account",
             details: stripeError.message,
             type: stripeError.type,
+            code: stripeError.code,
+            param: stripeError.param,
+            stripe_error: {
+              message: stripeError.message,
+              type: stripeError.type,
+              code: stripeError.code,
+              decline_code: stripeError.decline_code,
+              param: stripeError.param,
+            },
           },
           { status: 500 },
         )
       }
     }
 
-    // Verificar NEXT_PUBLIC_SITE_URL
+    // Criar link de onboarding
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
 
     try {
-      // Criar link de onboarding
       const accountLink = await stripe.accountLinks.create({
         account: accountId,
         refresh_url: `${siteUrl}/admin?stripe_refresh=true`,
@@ -121,6 +115,7 @@ export async function POST(request: Request) {
         type: "account_onboarding",
       })
 
+      console.log("Account link created successfully")
       return NextResponse.json({ url: accountLink.url })
     } catch (linkError: any) {
       console.error("Account link creation error:", linkError)
@@ -134,7 +129,7 @@ export async function POST(request: Request) {
       )
     }
   } catch (error: any) {
-    console.error("Stripe Connect error:", error)
+    console.error("General Stripe Connect error:", error)
     return NextResponse.json(
       {
         error: "Internal server error",

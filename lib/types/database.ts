@@ -10,7 +10,7 @@ export interface Database {
           company_logo_url: string | null
           created_at: string
           updated_at: string
-          username: string | null // Adicionado
+          username: string | null
         }
         Insert: {
           id: string
@@ -20,7 +20,7 @@ export interface Database {
           company_logo_url?: string | null
           created_at?: string
           updated_at?: string
-          username?: string | null // Adicionado
+          username?: string | null
         }
         Update: {
           id?: string
@@ -30,7 +30,7 @@ export interface Database {
           company_logo_url?: string | null
           created_at?: string
           updated_at?: string
-          username?: string | null // Adicionado
+          username?: string | null
         }
       }
       settings: {
@@ -103,6 +103,47 @@ export interface Database {
           updated_at?: string
         }
       }
+      products: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          price: number
+          image_url: string | null
+          stripe_price_id: string | null
+          is_active: boolean
+          order_index: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          price: number
+          image_url?: string | null
+          stripe_price_id?: string | null
+          is_active?: boolean
+          order_index?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          description?: string | null
+          price?: number
+          image_url?: string | null
+          stripe_price_id?: string | null
+          is_active?: boolean
+          order_index?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
       qr_code_metrics: {
         Row: {
           id: string
@@ -131,4 +172,10 @@ export interface Database {
       }
     }
   }
+}
+
+// Tipos para o carrinho de compras
+export interface CartItem {
+  product: Database["public"]["Tables"]["products"]["Row"]
+  quantity: number
 }

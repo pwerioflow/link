@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react" // Importar useRef
+import { useState, useEffect, useRef } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,17 +27,20 @@ import {
   ArrowDown,
   QrCode,
   RotateCcw,
+  Package,
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { Database } from "@/lib/types/database"
 import QRCode from "react-qr-code"
+import Image from "next/image"
 
 import { resetQrScanCount } from "@/app/actions/admin-actions"
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 type Settings = Database["public"]["Tables"]["settings"]["Row"]
 type LinkItem = Database["public"]["Tables"]["links"]["Row"]
+type ProductItem = Database["public"]["Tables"]["products"]["Row"]
 type QrCodeMetrics = Database["public"]["Tables"]["qr_code_metrics"]["Row"]
 
 const iconMap = {
@@ -53,6 +56,7 @@ export default function AdminPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [links, setLinks] = useState<LinkItem[]>([])
+  const [products, setProducts] = useState<ProductItem[]>([])
   const [qrMetrics, setQrMetrics] = useState<QrCodeMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -62,7 +66,7 @@ export default function AdminPage() {
 
   const supabase = createClient()
   const router = useRouter()
-  const qrCodeRef = useRef<HTMLDivElement>(null) // Ref para o container do QR Code
+  const qrCodeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     getUser()
@@ -91,11 +95,17 @@ export default function AdminPage() {
     const { data: profileData } = await supabase.from("profiles").select("*").eq("id", userId).single()
     const { data: settingsData } = await supabase.from("settings").select("*").eq("id", userId).single()
     const { data: linksData } = await supabase.from("links").select("*").eq("user_id", userId).order("order_index")
+    const { data: productsData } = await supabase
+      .from("products")
+      .select("*")
+      .eq("user_id", userId)
+      .order("order_index")
     const { data: qrMetricsData } = await supabase.from("qr_code_metrics").select("*").eq("user_id", userId).single()
 
     setProfile(profileData)
     setSettings(settingsData)
     setLinks(linksData || [])
+    setProducts(productsData || [])
     setQrMetrics(qrMetricsData)
   }
 
@@ -154,6 +164,24 @@ export default function AdminPage() {
     }
   }
 
+  const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, productId: string) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    try {
+      const path = `${user.id}/products/${file.name}-${Date.now()}`
+      const publicUrl = await uploadFile(file, "logos", path)
+
+      setProducts((prev) =>
+        prev.map((product) => (product.id === productId ? { ...product, image_url: publicUrl } : product)),
+      )
+      setMessage("Imagem do produto carregada com sucesso!")
+    } catch (error) {
+      console.error("Error uploading product image:", error)
+      setMessage("Erro ao fazer upload da imagem do produto")
+    }
+  }
+
   const validateUsername = (username: string) => {
     if (!username) {
       return "O nome de usuário não pode ser vazio."
@@ -209,6 +237,7 @@ export default function AdminPage() {
 
       if (settingsError) throw settingsError
 
+      // Update links
       for (const link of links) {
         if (link.id.startsWith("temp-")) {
           const { error } = await supabase.from("links").insert({
@@ -233,6 +262,33 @@ export default function AdminPage() {
               order_index: link.order_index,
             })
             .eq("id", link.id)
+          if (error) throw error
+        }
+      }
+
+      // Update products
+      for (const product of products) {
+        if (product.id.startsWith("temp-")) {
+          const { error } = await supabase.from("products").insert({
+            user_id: user.id,
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            image_url: product.image_url,
+            order_index: product.order_index,
+          })
+          if (error) throw error
+        } else {
+          const { error } = await supabase
+            .from("products")
+            .update({
+              name: product.name,
+              description: product.description,
+              price: product.price,
+              image_url: product.image_url,
+              order_index: product.order_index,
+            })
+            .eq("id", product.id)
           if (error) throw error
         }
       }
@@ -266,6 +322,23 @@ export default function AdminPage() {
     setLinks([...links, newLink])
   }
 
+  const addProduct = () => {
+    const newProduct: ProductItem = {
+      id: `temp-${Date.now()}`,
+      user_id: user.id,
+      name: "Novo Produto",
+      description: "",
+      price: 0,
+      image_url: null,
+      stripe_price_id: null,
+      order_index: products.length,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    setProducts([...products, newProduct])
+  }
+
   const removeLink = async (id: string) => {
     if (!id.startsWith("temp-")) {
       const { error } = await supabase.from("links").delete().eq("id", id)
@@ -279,8 +352,25 @@ export default function AdminPage() {
     setLinks(links.filter((link) => link.id !== id))
   }
 
+  const removeProduct = async (id: string) => {
+    if (!id.startsWith("temp-")) {
+      const { error } = await supabase.from("products").delete().eq("id", id)
+
+      if (error) {
+        console.error("Error deleting product:", error)
+        return
+      }
+    }
+
+    setProducts(products.filter((product) => product.id !== id))
+  }
+
   const updateLink = (id: string, updates: Partial<LinkItem>) => {
     setLinks(links.map((link) => (link.id === id ? { ...link, ...updates } : link)))
+  }
+
+  const updateProduct = (id: string, updates: Partial<ProductItem>) => {
+    setProducts(products.map((product) => (product.id === id ? { ...product, ...updates } : product)))
   }
 
   const moveLink = (id: string, direction: "up" | "down") => {
@@ -305,6 +395,28 @@ export default function AdminPage() {
     setLinks(updatedLinks)
   }
 
+  const moveProduct = (id: string, direction: "up" | "down") => {
+    const index = products.findIndex((product) => product.id === id)
+    if (index === -1) return
+
+    const newProducts = [...products]
+    const [movedProduct] = newProducts.splice(index, 1)
+
+    if (direction === "up" && index > 0) {
+      newProducts.splice(index - 1, 0, movedProduct)
+    } else if (direction === "down" && index < newProducts.length) {
+      newProducts.splice(index + 1, 0, movedProduct)
+    } else {
+      return
+    }
+
+    const updatedProducts = newProducts.map((product, idx) => ({
+      ...product,
+      order_index: idx,
+    }))
+    setProducts(updatedProducts)
+  }
+
   const handleResetQrCount = async () => {
     if (!user) return
     const result = await resetQrScanCount(user.id)
@@ -314,7 +426,6 @@ export default function AdminPage() {
     }
   }
 
-  // Nova função para baixar o QR Code
   const handleDownloadQrCode = () => {
     if (qrCodeRef.current) {
       const svgElement = qrCodeRef.current.querySelector("svg")
@@ -325,11 +436,11 @@ export default function AdminPage() {
 
         const downloadLink = document.createElement("a")
         downloadLink.href = svgUrl
-        downloadLink.download = `${profile?.username || "pwerlink"}-qrcode.svg` // Nome do arquivo
+        downloadLink.download = `${profile?.username || "pwerlink"}-qrcode.svg`
         document.body.appendChild(downloadLink)
         downloadLink.click()
         document.body.removeChild(downloadLink)
-        URL.revokeObjectURL(svgUrl) // Libera a URL do objeto
+        URL.revokeObjectURL(svgUrl)
       }
     }
   }
@@ -387,7 +498,7 @@ export default function AdminPage() {
         )}
 
         <Tabs defaultValue="links" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="links">Links</TabsTrigger>
             <TabsTrigger value="settings">Configurações</TabsTrigger>
             <TabsTrigger value="design">Design</TabsTrigger>
@@ -396,14 +507,22 @@ export default function AdminPage() {
 
           <TabsContent value="links" className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Gerenciar Links</h2>
-              <Button onClick={addLink} className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Adicionar Link
-              </Button>
+              <h2 className="text-xl font-semibold">Gerenciar Links e Produtos</h2>
+              <div className="flex gap-2">
+                <Button onClick={addLink} className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Adicionar Link
+                </Button>
+                <Button onClick={addProduct} variant="outline" className="flex items-center gap-2 bg-transparent">
+                  <Package className="w-4 h-4" />
+                  Adicionar Produto
+                </Button>
+              </div>
             </div>
 
+            {/* Links Section */}
             <div className="space-y-4">
+              <h3 className="text-lg font-medium">Links</h3>
               {links.map((link, index) => (
                 <Card key={link.id}>
                   <CardContent className="p-4">
@@ -520,6 +639,100 @@ export default function AdminPage() {
                       </div>
 
                       <Button variant="destructive" size="sm" onClick={() => removeLink(link.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Products Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Produtos</h3>
+              {products.map((product, index) => (
+                <Card key={product.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex flex-col gap-1 mt-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moveProduct(product.id, "up")}
+                          disabled={index === 0}
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moveProduct(product.id, "down")}
+                          disabled={index === products.length - 1}
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <div>
+                            <Label>Nome do Produto</Label>
+                            <Input
+                              value={product.name}
+                              onChange={(e) => updateProduct(product.id, { name: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label>Preço (R$)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={product.price}
+                              onChange={(e) =>
+                                updateProduct(product.id, { price: Number.parseFloat(e.target.value) || 0 })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div>
+                            <Label>Descrição</Label>
+                            <Textarea
+                              value={product.description || ""}
+                              onChange={(e) => updateProduct(product.id, { description: e.target.value })}
+                              rows={3}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-2 space-y-3">
+                          <div>
+                            <Label>Imagem do Produto</Label>
+                            <div className="flex gap-2 items-center">
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleProductImageUpload(e, product.id)}
+                                className="flex-1"
+                              />
+                              {product.image_url && (
+                                <div className="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden">
+                                  <Image
+                                    src={product.image_url || "/placeholder.svg"}
+                                    alt={product.name}
+                                    width={64}
+                                    height={64}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button variant="destructive" size="sm" onClick={() => removeProduct(product.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>

@@ -335,6 +335,9 @@ export default function AdminPage() {
             description: product.description,
             price: product.price,
             image_url: product.image_url,
+            display_size: product.display_size,
+            stock_quantity: product.stock_quantity,
+            gallery_images: product.gallery_images,
             order_index: product.order_index,
           })
           if (error) throw error
@@ -346,6 +349,9 @@ export default function AdminPage() {
               description: product.description,
               price: product.price,
               image_url: product.image_url,
+              display_size: product.display_size,
+              stock_quantity: product.stock_quantity,
+              gallery_images: product.gallery_images,
               order_index: product.order_index,
             })
             .eq("id", product.id)

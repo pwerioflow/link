@@ -25,12 +25,12 @@ export default function ProductCard({ product }: ProductCardProps) {
   }
 
   const handleCardClick = () => {
-    if (product.display_size === "half") {
+    if (product.display_size === "half" && !isExpanded) {
       setIsExpanded(true)
     }
   }
 
-  const handleCloseExpanded = (e: React.MouseEvent) => {
+  const handleCollapseClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     setIsExpanded(false)
   }
@@ -47,110 +47,15 @@ export default function ProductCard({ product }: ProductCardProps) {
     setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length)
   }
 
-  // Card expandido para produtos de meia página
-  if (isExpanded) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">{product.name}</h2>
-              <Button variant="ghost" onClick={handleCloseExpanded} className="text-gray-500 hover:text-gray-700">
-                ✕
-              </Button>
-            </div>
+  // Determinar se deve mostrar como card expandido (largura inteira)
+  const showAsFullWidth = !isHalfSize || isExpanded
 
-            {/* Galeria de imagens com scroll */}
-            <div className="relative mb-4">
-              <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
-                {allImages.length > 0 ? (
-                  <Image
-                    src={allImages[currentImageIndex] || "/placeholder.svg"}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400 text-4xl">📦</div>
-                )}
-
-                {/* Navegação de imagens */}
-                {allImages.length > 1 && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
-                      onClick={prevImage}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
-                      onClick={nextImage}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </>
-                )}
-
-                {/* Indicador de estoque */}
-                {isOutOfStock && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <span className="text-white font-semibold bg-red-600 px-3 py-1 rounded">Esgotado</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Indicadores de imagem */}
-              {allImages.length > 1 && (
-                <div className="flex justify-center mt-2 gap-1">
-                  {allImages.map((_, index) => (
-                    <button
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        index === currentImageIndex ? "bg-gray-800" : "bg-gray-300"
-                      }`}
-                      onClick={() => setCurrentImageIndex(index)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Informações do produto */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-2xl font-bold text-gray-900">R$ {product.price.toFixed(2)}</span>
-              </div>
-
-              {product.description && <p className="text-gray-600">{product.description}</p>}
-
-              {/* Estoque */}
-              {product.stock_quantity !== null && product.stock_quantity > 0 && product.stock_quantity <= 10 && (
-                <p className="text-orange-600">Apenas {product.stock_quantity} em estoque</p>
-              )}
-
-              <Button onClick={handleAddToCart} className="w-full" disabled={isOutOfStock}>
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                {isOutOfStock ? "Esgotado" : "Adicionar ao Carrinho"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Card normal
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow ${
-        isHalfSize ? "cursor-pointer" : "col-span-2"
-      }`}
-      onClick={isHalfSize ? handleCardClick : undefined}
+      className={`bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 group ${
+        showAsFullWidth ? "col-span-2" : ""
+      } ${isHalfSize && !isExpanded ? "cursor-pointer" : ""}`}
+      onClick={isHalfSize && !isExpanded ? handleCardClick : undefined}
     >
       {/* Galeria de imagens */}
       <div className="aspect-square bg-gray-100 relative">
@@ -163,8 +68,8 @@ export default function ProductCard({ product }: ProductCardProps) {
               className="object-cover"
             />
 
-            {/* Navegação apenas para cards de largura inteira */}
-            {!isHalfSize && allImages.length > 1 && (
+            {/* Navegação - aparece sempre em cards expandidos ou de largura inteira */}
+            {showAsFullWidth && allImages.length > 1 && (
               <>
                 <Button
                   variant="ghost"
@@ -202,6 +107,18 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
+        {/* Botão de colapsar para cards expandidos */}
+        {isExpanded && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute top-2 left-2 bg-white/80 hover:bg-white text-gray-700 text-xs"
+            onClick={handleCollapseClick}
+          >
+            ← Voltar
+          </Button>
+        )}
+
         {/* Indicador de estoque */}
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -211,7 +128,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       </div>
 
       {/* Indicadores de imagem para cards de largura inteira */}
-      {!isHalfSize && allImages.length > 1 && (
+      {showAsFullWidth && allImages.length > 1 && (
         <div className="flex justify-center py-2 gap-1">
           {allImages.map((_, index) => (
             <button
@@ -230,13 +147,15 @@ export default function ProductCard({ product }: ProductCardProps) {
 
       <div className="p-3">
         <h3
-          className={`font-medium text-gray-900 mb-1 ${isHalfSize ? "text-sm line-clamp-1" : "text-sm line-clamp-2"}`}
+          className={`font-medium text-gray-900 mb-1 ${
+            showAsFullWidth ? "text-sm line-clamp-2" : "text-sm line-clamp-1"
+          }`}
         >
           {product.name}
         </h3>
 
-        {/* Descrição só aparece em cards full */}
-        {!isHalfSize && product.description && (
+        {/* Descrição aparece em cards expandidos ou de largura inteira */}
+        {showAsFullWidth && product.description && (
           <p className="text-xs text-gray-600 mb-2 line-clamp-2">{product.description}</p>
         )}
 
@@ -248,7 +167,8 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="flex items-center justify-between">
           <span className="font-bold text-sm text-gray-900">R$ {product.price.toFixed(2)}</span>
 
-          {isHalfSize ? (
+          {!showAsFullWidth ? (
+            // Botão pequeno para cards de meia página não expandidos
             <Button
               size="sm"
               onClick={(e) => {
@@ -261,6 +181,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               <Plus className="w-4 h-4" />
             </Button>
           ) : (
+            // Botão completo para cards expandidos ou de largura inteira
             <Button size="sm" onClick={handleAddToCart} className="h-8 px-3 text-xs" disabled={isOutOfStock}>
               <ShoppingCart className="w-3 h-3 mr-1" />
               {isOutOfStock ? "Esgotado" : "Adicionar"}

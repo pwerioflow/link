@@ -641,6 +641,22 @@ export default function AdminPage() {
 
   const qrCodeUrl = profile?.username ? `${window.location.origin}/${profile.username}?source=qr` : ""
 
+  const removeHeroBanner = async () => {
+    if (!user || !profile?.hero_banner_url) return
+
+    try {
+      const { error } = await supabase.from("profiles").update({ hero_banner_url: null }).eq("id", user.id)
+
+      if (error) throw error
+
+      setProfile((prev) => (prev ? { ...prev, hero_banner_url: null } : null))
+      setMessage("Hero banner removido com sucesso!")
+    } catch (error) {
+      console.error("Error removing hero banner:", error)
+      setMessage("Erro ao remover hero banner")
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">
@@ -1086,19 +1102,35 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <Label>Hero Banner (opcional)</Label>
-                      <div className="flex items-center gap-4">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleLogoUpload(e, "hero")}
-                          className="flex-1"
-                        />
-                        {profile.hero_banner_url && (
-                          <img
-                            src={profile.hero_banner_url || "/placeholder.svg"}
-                            alt="Hero Banner"
-                            className="w-20 h-12 rounded object-cover"
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-4">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleLogoUpload(e, "hero")}
+                            className="flex-1"
                           />
+                          {profile.hero_banner_url && (
+                            <>
+                              <img
+                                src={profile.hero_banner_url || "/placeholder.svg"}
+                                alt="Hero Banner"
+                                className="w-20 h-12 rounded object-cover"
+                              />
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={removeHeroBanner}
+                                className="flex items-center gap-1"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                Remover
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                        {profile.hero_banner_url && (
+                          <p className="text-xs text-gray-500">Clique em "Remover" para apagar o hero banner atual</p>
                         )}
                       </div>
                     </div>

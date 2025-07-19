@@ -1,10 +1,11 @@
-export function getVideoEmbedUrl(url: string): string | null {
+export function getVideoEmbedUrl(url: string, autoplay = false): string | null {
   // YouTube patterns
   const youtubeRegex = /(?:youtube\.com\/(?:[^/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?/\s]{11})/
   const youtubeMatch = url.match(youtubeRegex)
 
   if (youtubeMatch) {
-    return `https://www.youtube.com/embed/${youtubeMatch[1]}?rel=0&modestbranding=1`
+    const autoplayParam = autoplay ? "&autoplay=1&mute=1" : ""
+    return `https://www.youtube.com/embed/${youtubeMatch[1]}?rel=0&modestbranding=1&enablejsapi=1${autoplayParam}`
   }
 
   // Vimeo patterns
@@ -12,7 +13,8 @@ export function getVideoEmbedUrl(url: string): string | null {
   const vimeoMatch = url.match(vimeoRegex)
 
   if (vimeoMatch) {
-    return `https://player.vimeo.com/video/${vimeoMatch[1]}`
+    const autoplayParam = autoplay ? "&autoplay=1&muted=1" : ""
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}?api=1${autoplayParam}`
   }
 
   return null

@@ -86,6 +86,7 @@ export interface Database {
           href: string
           type: "link" | "email" | "whatsapp" | "download" | "video"
           icon_type: "instagram" | "email" | "website" | "download" | "whatsapp" | "video"
+          autoplay_video: boolean
           order_index: number
           is_active: boolean
           created_at: string
@@ -99,6 +100,7 @@ export interface Database {
           href: string
           type: "link" | "email" | "whatsapp" | "download" | "video"
           icon_type: "instagram" | "email" | "website" | "download" | "whatsapp" | "video"
+          autoplay_video?: boolean
           order_index?: number
           is_active?: boolean
           created_at?: string
@@ -112,6 +114,7 @@ export interface Database {
           href?: string
           type?: "link" | "email" | "whatsapp" | "download" | "video"
           icon_type?: "instagram" | "email" | "website" | "download" | "whatsapp" | "video"
+          autoplay_video?: boolean
           order_index?: number
           is_active?: boolean
           created_at?: string

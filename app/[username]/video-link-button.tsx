@@ -1,7 +1,8 @@
 "use client"
-import { useState } from "react"
-import { Play, ChevronDown, ChevronUp } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Play, ChevronDown, ChevronUp, Pause } from "lucide-react"
 import { getVideoEmbedUrl } from "@/lib/utils/video"
+import { useVideo } from "@/lib/context/video-context"
 
 interface VideoLinkButtonProps {
   link: any
@@ -10,10 +11,38 @@ interface VideoLinkButtonProps {
 
 export default function VideoLinkButton({ link, settings }: VideoLinkButtonProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const embedUrl = getVideoEmbedUrl(link.href)
+  const { activeVideoId, setActiveVideo, stopAllVideos } = useVideo()
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+
+  const embedUrl = getVideoEmbedUrl(link.href, link.autoplay_video)
+  const embedUrlWithoutAutoplay = getVideoEmbedUrl(link.href, false)
+  const isThisVideoActive = activeVideoId === link.id
+
+  useEffect(() => {
+    // Se outro vídeo está ativo e este estava expandido, colapsar
+    if (activeVideoId && activeVideoId !== link.id && isExpanded) {
+      setIsExpanded(false)
+    }
+  }, [activeVideoId, link.id, isExpanded])
+
+  useEffect(() => {
+    // Se o vídeo foi parado externamente, colapsar
+    if (!activeVideoId && isExpanded) {
+      setIsExpanded(false)
+    }
+  }, [activeVideoId, isExpanded])
 
   const handleToggle = () => {
-    setIsExpanded(!isExpanded)
+    if (isExpanded) {
+      // Se está expandido, colapsar e parar o vídeo
+      setIsExpanded(false)
+      setActiveVideo(null)
+    } else {
+      // Se não está expandido, parar todos os outros vídeos e expandir este
+      stopAllVideos()
+      setIsExpanded(true)
+      setActiveVideo(link.id)
+    }
   }
 
   if (!embedUrl) {
@@ -41,7 +70,7 @@ export default function VideoLinkButton({ link, settings }: VideoLinkButtonProps
         }}
       >
         <div className="text-2xl transition-colors duration-300">
-          <Play className="w-6 h-6" />
+          {isExpanded && isThisVideoActive ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
         </div>
         <div className="flex-1 text-left">
           <div className="font-semibold text-lg">{link.title}</div>
@@ -68,14 +97,17 @@ export default function VideoLinkButton({ link, settings }: VideoLinkButtonProps
       >
         <div className="bg-black rounded-lg overflow-hidden shadow-lg">
           <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-            <iframe
-              src={embedUrl}
-              title={link.title}
-              className="absolute top-0 left-0 w-full h-full"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+            {isExpanded && (
+              <iframe
+                ref={iframeRef}
+                src={link.autoplay_video ? embedUrl : embedUrlWithoutAutoplay}
+                title={link.title}
+                className="absolute top-0 left-0 w-full h-full"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            )}
           </div>
         </div>
       </div>

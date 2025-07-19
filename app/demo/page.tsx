@@ -3,7 +3,8 @@ import { Instagram, Mail, Globe, Download, MessageCircle, Play, ExternalLink } f
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import VideoLinkButton from "../[username]/video-link-button"
+import { VideoProvider } from "@/lib/context/video-context"
+import LinkWrapper from "@/app/[username]/link-wrapper"
 
 interface LinkItem {
   id: string
@@ -12,6 +13,7 @@ interface LinkItem {
   subtitle: string
   type: "link" | "email" | "whatsapp" | "download" | "video"
   iconType: "instagram" | "email" | "website" | "download" | "whatsapp" | "video"
+  autoplay_video?: boolean
 }
 
 interface AppSettings {
@@ -85,6 +87,7 @@ const demoLinks: LinkItem[] = [
     subtitle: "Assista nosso vídeo",
     type: "video",
     iconType: "video",
+    autoplay_video: true,
   },
 ]
 
@@ -142,72 +145,75 @@ function LinkButton({ link, settings }: LinkButtonProps) {
 
 export default function DemoPage() {
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header com botões de ação */}
-      <div className="bg-gray-50 border-b border-gray-200 p-4">
-        <div className="max-w-md mx-auto flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-800">Demonstração</h2>
-          <div className="flex gap-2">
+    <VideoProvider>
+      <div className="min-h-screen bg-white">
+        {/* Header com botões de ação */}
+        <div className="bg-gray-50 border-b border-gray-200 p-4">
+          <div className="max-w-md mx-auto flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-800">Demonstração</h2>
+            <div className="flex gap-2">
+              <Link href="/login">
+                <Button variant="outline" size="sm">
+                  Login
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button size="sm">Criar Conta</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-md mx-auto px-6 py-8">
+          {/* Logo do Empreendimento */}
+          <div className="text-center mb-8">
+            <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+              <Image
+                src={demoSettings.businessLogo || "/placeholder.svg"}
+                alt="Logo do Empreendimento"
+                width={80}
+                height={80}
+                className="rounded-full"
+              />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">{demoSettings.businessName}</h1>
+            <p className="text-gray-600 text-sm">{demoSettings.businessDescription}</p>
+          </div>
+
+          {/* Links */}
+          <div className="space-y-4 mb-12">
+            {demoLinks.map((link) => (
+              <LinkWrapper key={link.id} link={link} settings={demoSettings} icon={iconMap[link.iconType]} />
+            ))}
+          </div>
+
+          {/* Call to Action */}
+          <div className="text-center mb-8 p-6 bg-gray-50 rounded-xl">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Crie seu próprio Linktree!</h3>
+            <p className="text-gray-600 text-sm mb-4">
+              Personalize cores, adicione seus links e gerencie tudo facilmente.
+            </p>
             <Link href="/login">
-              <Button variant="outline" size="sm">
-                Login
-              </Button>
+              <Button className="w-full">Começar Agora</Button>
             </Link>
-            <Link href="/login">
-              <Button size="sm">Criar Conta</Button>
-            </Link>
+          </div>
+
+          {/* Rodapé com Pwer Io */}
+          <div className="text-center pt-8 border-t border-gray-100">
+            <p className="text-xs text-gray-500">
+              Desenvolvido por{" "}
+              <Link
+                href="https://www.pwer.com.br"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                Pwer Io
+              </Link>
+            </p>
           </div>
         </div>
       </div>
-
-      <div className="max-w-md mx-auto px-6 py-8">
-        {/* Logo do Empreendimento */}
-        <div className="text-center mb-8">
-          <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-            <Image
-              src={demoSettings.businessLogo || "/placeholder.svg"}
-              alt="Logo do Empreendimento"
-              width={80}
-              height={80}
-              className="rounded-full"
-            />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">{demoSettings.businessName}</h1>
-          <p className="text-gray-600 text-sm">{demoSettings.businessDescription}</p>
-        </div>
-
-        {/* Links */}
-        <div className="space-y-4 mb-12">
-          {demoLinks.map((link) =>
-            link.type === "video" ? (
-              <VideoLinkButton key={link.id} link={link} settings={demoSettings} />
-            ) : (
-              <LinkButton key={link.id} link={link} settings={demoSettings} />
-            ),
-          )}
-        </div>
-
-        {/* Call to Action */}
-        <div className="text-center mb-8 p-6 bg-gray-50 rounded-xl">
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Crie seu próprio Linktree!</h3>
-          <p className="text-gray-600 text-sm mb-4">
-            Personalize cores, adicione seus links e gerencie tudo facilmente.
-          </p>
-          <Link href="/login">
-            <Button className="w-full">Começar Agora</Button>
-          </Link>
-        </div>
-
-        {/* Rodapé com Pwer Io */}
-        <div className="text-center pt-8 border-t border-gray-100">
-          <p className="text-xs text-gray-500">
-            Desenvolvido por{" "}
-            <Link href="https://www.pwer.com.br" target="_blank" rel="noopener noreferrer" className="hover:underline">
-              Pwer Io
-            </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+    </VideoProvider>
   )
 }

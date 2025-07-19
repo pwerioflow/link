@@ -354,6 +354,7 @@ export default function AdminPage() {
             href: link.href,
             type: link.type,
             icon_type: link.icon_type,
+            autoplay_video: link.autoplay_video, // Adicionar esta linha
             order_index: link.order_index,
           })
           if (error) throw error
@@ -366,6 +367,7 @@ export default function AdminPage() {
               href: link.href,
               type: link.type,
               icon_type: link.icon_type,
+              autoplay_video: link.autoplay_video, // Adicionar esta linha
               order_index: link.order_index,
             })
             .eq("id", link.id)
@@ -427,6 +429,7 @@ export default function AdminPage() {
       href: "",
       type: "link",
       icon_type: "website",
+      autoplay_video: false, // Adicionar esta linha
       order_index: links.length,
       is_active: true,
       created_at: new Date().toISOString(),
@@ -848,6 +851,21 @@ export default function AdminPage() {
                                         : "https://exemplo.com"
                                 }
                               />
+                            </div>
+                          )}
+                          {/* Adicionar após o campo de URL, dentro do md:col-span-2 */}
+                          {link.type === "video" && (
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={`autoplay-${link.id}`}
+                                checked={link.autoplay_video || false}
+                                onChange={(e) => updateLink(link.id, { autoplay_video: e.target.checked })}
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                              />
+                              <Label htmlFor={`autoplay-${link.id}`} className="text-sm">
+                                Reproduzir automaticamente ao expandir
+                              </Label>
                             </div>
                           )}
                         </div>
